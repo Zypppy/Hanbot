@@ -1,4 +1,4 @@
-local version = "3.5"
+local version = "3.6"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -214,7 +214,7 @@ local pos = preds.circular.get_prediction(spellW, target)
 end
 if menu.c.qcombo:get() and common.IsValidTarget(target) and target then
 local pos = preds.linear.get_prediction(spellQ, target)  
-   if pos and player.pos:to2D():dist(pos.endPos) <= spellQ.range then
+   if pos and player.pos:to2D():dist(pos.endPos) <= spellQ.range and not preds.collision.get_prediction(spellQ, pos, target) then
 	     player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
    end		 
 end
@@ -239,7 +239,7 @@ local target = GetTarget()
 	     if common.IsValidTarget(target) and target and (player.mana / player.maxMana) * 100 >= menu.h.manaq:get() then
 		    if (target.pos:dist(player) < spellQ.range) then 
 			local pos = preds.linear.get_prediction(spellQ, target)
-			   if pos and pos.startPos:dist(pos.endPos) < spellQ.range then
+			   if pos and pos.startPos:dist(pos.endPos) < spellQ.range and not preds.collision.get_prediction(spellQ, pos, target) then
 			   player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 			   end
 			end
@@ -260,14 +260,15 @@ end
 local function LaneClear()
 if menu.lc.qlc:get()and player:spellSlot(0).state == 0 and (player.mana / player.maxMana) * 100 >= menu.lc.manaqlc:get() then
    local enemyMinionsQ = common.GetMinionsInRange(spellQ.range, TEAM_ENEMY)
-   for i, minion in pairs(enemyMinionsQ) do
+   for i = 0, objManager.minions.size[TEAM_ENEMY] - 1 do
+   local minion = objManager.minions[TEAM_ENEMY][i]
    if minion and not minion.isDead and common.IsValidTarget(minion) then
    local minion = objManager.minions[TEAM_ENEMY][i]
 		 if minion and minion.pos:dist(player.pos) <= spellQ.range and menu.lc.qlcmode:get() == 1 and not minion.isDead and common.IsValidTarget(minion) then
 		 local minionPos = vec3(minion.x, minion.y, minion.z)
 			   if minionPos then
 			   local seg = preds.linear.get_prediction(spellQ, minion)
-					 if seg and seg.startPos:dist(seg.endPos) < spellQ.range then
+					 if seg and seg.startPos:dist(seg.endPos) < spellQ.range and not preds.collision.get_prediction(spellQ, seg, minion) then
 					 player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
 					 end
 			   end
@@ -277,10 +278,10 @@ if menu.lc.qlc:get()and player:spellSlot(0).state == 0 and (player.mana / player
 		 delay = 0.25 + player.pos:dist(minion.pos) / 3000
 			   if minionPos then
 			   local seg = preds.linear.get_prediction(spellQ, minion)
-					 if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true) - 150) then
+					 if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true) - 150) and not preds.collision.get_prediction(spellQ, seg, minion) then
 				         orb.core.set_pause_attack(1)
 			         end
-				     if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true)) then
+				     if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true)) and not preds.collision.get_prediction(spellQ, seg, minion)then
 					     player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
 				     end
 			   end
@@ -290,7 +291,8 @@ if menu.lc.qlc:get()and player:spellSlot(0).state == 0 and (player.mana / player
 end
 if menu.lc.wlc:get() and player:spellSlot(1).state == 0 and (player.mana / player.maxMana) * 100 >= menu.lc.manawlc:get() then
    local enemyMinionsW = common.GetMinionsInRange(spellW.range, TEAM_ENEMY)
-   for i, minion in pairs(enemyMinionsW) do
+   for i = 0, objManager.minions.size[TEAM_ENEMY] - 1 do
+   local minion = objManager.minions[TEAM_ENEMY][i]
    if minion and not minion.isDead and common.IsValidTarget(minion) then
    local minion = objManager.minions[TEAM_ENEMY][i]
 		 if minion and minion.pos:dist(player.pos) <= spellW.range and not minion.isDead and common.IsValidTarget(minion) then
@@ -316,7 +318,7 @@ if menu.lh.qlh:get() and player:spellSlot(0).state == 0 and (player.mana / playe
 	   delay = 0.25 + player.pos:dist(minion.pos) / 3000
 	   if minionPos then 
 	   local seg = preds.linear.get_prediction(spellQ, minion)
-	         if seg and seg.startPos:dist(seg.endPos) < spellQ.range then
+	         if seg and seg.startPos:dist(seg.endPos) < spellQ.range and not preds.collision.get_prediction(spellQ, seg, minion)then
 			    if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true) - 150) then
 				    orb.core.set_pause_attack(1)
 			    end
