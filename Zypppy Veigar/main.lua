@@ -50,7 +50,8 @@ menu.h:boolean("wharass", "Use W in Harass", true)
 menu.h:slider("manaw", "W Mana", 80, 1, 100, 1)
 
 menu:menu("lc", "Lane Clear")
-menu.lc:boolean("qlc", "Use Q To Lane Clear", true) 
+menu.lc:boolean("qlc", "Use Q To Lane Clear", true)
+menu.lc:dropdown("qlcmode", "Q Mode", 2, {"Push", "Only Last Hit"}) 
 menu.lc:slider("manaqlc", "Q Mana", 30, 1, 100, 1)
 menu.lc:boolean("wlc", "Use W To Lane Clear", true) 
 menu.lc:slider("manawlc", "W Mana", 30, 1, 100, 1)
@@ -257,18 +258,31 @@ local target = GetTarget()
 end	  
 
 local function LaneClear()
-if menu.lc.qlc:get() and player:spellSlot(0).state == 0 and (player.mana / player.maxMana) * 100 >= menu.lc.manaqlc:get() then
+if menu.lc.qlc:get()and player:spellSlot(0).state == 0 and (player.mana / player.maxMana) * 100 >= menu.lc.manaqlc:get() then
    local enemyMinionsQ = common.GetMinionsInRange(spellQ.range, TEAM_ENEMY)
    for i, minion in pairs(enemyMinionsQ) do
    if minion and not minion.isDead and common.IsValidTarget(minion) then
    local minion = objManager.minions[TEAM_ENEMY][i]
-		 if minion and minion.pos:dist(player.pos) <= spellQ.range and not minion.isDead and common.IsValidTarget(minion) then
+		 if minion and minion.pos:dist(player.pos) <= spellQ.range and menu.lc.qlcmode:get() == 1 and not minion.isDead and common.IsValidTarget(minion) then
 		 local minionPos = vec3(minion.x, minion.y, minion.z)
 			   if minionPos then
 			   local seg = preds.linear.get_prediction(spellQ, minion)
 					 if seg and seg.startPos:dist(seg.endPos) < spellQ.range then
 					 player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
 					 end
+			   end
+         end
+		 if minion and minion.pos:dist(player.pos) <= spellQ.range and menu.lc.qlcmode:get() == 2 and not minion.isDead and common.IsValidTarget(minion) then
+		 local minionPos = vec3(minion.x, minion.y, minion.z)
+		 delay = 0.25 + player.pos:dist(minion.pos) / 3000
+			   if minionPos then
+			   local seg = preds.linear.get_prediction(spellQ, minion)
+					 if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true) - 150) then
+				         orb.core.set_pause_attack(1)
+			         end
+				     if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true)) then
+					     player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
+				     end
 			   end
          end
    end
