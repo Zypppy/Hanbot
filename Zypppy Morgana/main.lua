@@ -1,4 +1,4 @@
-local version = "3.0"
+local version = "3.1"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -7,7 +7,7 @@ local common = module.load("ZypppyMorgana", "common")
 
 local spellQ = {
 range = 1200, 
-width = 70, 
+width = 75, 
 speed = 1200, 
 delay = 0.5, 
 boundingRadiusMod = 0,
@@ -24,6 +24,8 @@ speed = math.huge,
 delay = 0.5, 
 boundingRadiusMod = 0 
 }
+
+local spellE = {range = 800} 
 
 local spellR = {range = 625}
 
@@ -48,9 +50,13 @@ menu.draws:color("colorr", "  ^- Color", 255, 255, 255, 255)
 menu:menu("misc", "Misc.")
 menu.misc:menu("setq", "Q Settings")
 menu.misc.setq:boolean("QDash", "Auto Q on Dashes", true)
---menu.misc.setq:boolean("QCC", "Auto Q on CC'ed enemies", true)
+menu.misc.setq:boolean("QCC", "Auto Q on CC'ed enemies", true)
 menu.misc.setq:boolean("Qinterr", "Auto Q to Interrupt", true)
 menu.misc.setq:menu("interruptmenuq", "Q Interrupting")
+menu.misc:menu("setw", "W Settings")
+menu.misc.setw:boolean("WCC", "Auto W on CC'ed enemies", true)
+menu.misc:menu("Gap", "Gapcloser Settings")
+menu.misc.Gap:boolean("GapA", "Use E for Anti-Gapclose", true)
 
 local interruptableSpells = {
 	["anivia"] = {
@@ -184,6 +190,17 @@ local GetTargetW = function()
 	return TS.get_result(TargetSelectionW).obj
 end
 
+local TargetSelectionGap = function(res, obj, dist)
+	if dist < (spellE.range * 2) - 70 then
+		res.obj = obj
+		return true
+	end
+end
+
+local GetTargetGap = function()
+	return TS.get_result(TargetSelectionGap).obj
+end
+
 local function count_enemies_in_range(pos, range)
 	local enemies_in_range = {}
 	for i = 0, objManager.enemies_n - 1 do
@@ -208,6 +225,22 @@ local trace_filter = function(input, segment, target)
 	if preds.trace.newpath(target, 0.033, 0.5) then
 		return true
 	end
+end
+
+local function EGapcloser()
+if menu.misc.Gap.GapA:get() then
+   for i = 0, objManager.enemies_n - 1 do
+   local dasher = objManager.enemies[i]
+       if dasher.type == TYPE_HERO and dasher.team == TEAM_ENEMY then
+          if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
+             player.pos:dist(dasher.path.point[1]) < spellE.range then
+             if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
+                player:castSpell("obj", 2, player)
+             end
+          end
+       end
+    end
+end
 end
 
 local function Combo()
@@ -266,6 +299,44 @@ local function OnDraw()
  end
 end
 
+local function AutoCC()
+local enemy = common.GetEnemyHeroes()
+      for i, enemies in ipairs(enemy) do
+	      if enemies and common.IsValidTarget(enemies) and not common.CheckBuffType(enemies, 17) then
+		     if menu.misc.setq.QCC:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) < spellQ.range then
+			 local pos = preds.linear.get_prediction(spellQ, enemies)
+			    if common.CheckBuffType(enemies, 11) or 
+				   common.CheckBuffType(enemies, 5) or 
+				   common.CheckBuffType(enemies, 22) or
+				   common.CheckBuffType(enemies, 8) or
+				   common.CheckBuffType(enemies, 24) or
+				   common.CheckBuffType(enemies, 29) or
+				   common.CheckBuffType(enemies, 32) or
+				   common.CheckBuffType(enemies, 34) then
+				   if pos and pos.startPos:dist(pos.endPos) < spellQ.range and not preds.collision.get_prediction(spellQ, pos, enemies) then
+				   player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+				   end
+				 end
+			 end
+             if menu.misc.setw.WCC:get() and player:spellSlot(1).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) < spellW.range then
+			 local pos = preds.circular.get_prediction(spellW, enemies)
+			    if common.CheckBuffType(enemies, 11) or 
+				   common.CheckBuffType(enemies, 5) or 
+				   common.CheckBuffType(enemies, 22) or
+				   common.CheckBuffType(enemies, 8) or
+				   common.CheckBuffType(enemies, 24) or
+				   common.CheckBuffType(enemies, 29) or
+				   common.CheckBuffType(enemies, 32) or
+				   common.CheckBuffType(enemies, 34) then
+				   if pos and pos.startPos:dist(pos.endPos) < spellW.range then
+				   player:castSpell("pos", 1, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+				   end
+				 end
+			 end			 
+		  end
+       end		  
+end
+
 local function AutoDash()
 	local seg = {}
 	local target =
@@ -291,7 +362,11 @@ local function AutoDash()
 end
  
 local function OnTick()
+        AutoCC()
 	    AutoDash()
+    if menu.misc.Gap.GapA:get() then
+		EGapcloser()
+	end
 	if menu.keys.combokey:get() then
 		Combo()
 	end
