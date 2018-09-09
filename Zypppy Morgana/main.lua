@@ -235,7 +235,7 @@ if menu.misc.Gap.GapA:get() then
           if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
              player.pos:dist(dasher.path.point[1]) < spellE.range then
              if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
-                player:castSpell("obj", 2, player)
+                player:castSpell("self", 2)
              end
           end
        end
