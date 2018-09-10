@@ -1,4 +1,4 @@
-local version = "3.0"
+local version = "3.1"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -47,6 +47,7 @@ menu.c:boolean("qcombo", "Use Q in Combo", true)
 menu.c:boolean("wcombo", "Use W in Combo", true)
 menu.c:boolean("ecombo", "Use E in Combo", true)
 menu.c:boolean("rcombo", "Use R in Combo", true)
+menu.c:boolean("semirc", "Semi Manual R (check keybinds)", true)
 menu.c:dropdown("rmode", "R Mode", 2, {"Smallest Range", "Medium Range", "Max Range"})
 
 menu:menu("h", "Harass")
@@ -80,24 +81,43 @@ menu.keys:keybind("combokey", "Combo Key", "Space", nil)
 menu.keys:keybind("harasskey", "Harass Key", "C", nil)
 menu.keys:keybind("clearkey", "Lane Clear Key", "V", nil)
 menu.keys:keybind("lastkey", "Last Hit", "X", nil)
+menu.keys:keybind("semir", "Semi Manual R", "T", nil)
 
-TS.load_to_menu(menu)
-local TargetSelection = function(res, obj, dist)
+local TargetSelectionQ = function(res, obj, dist)
+	if dist <= spellQ.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetQ = function()
+	return TS.get_result(TargetSelectionQ).obj
+end
+local TargetSelectionW = function(res, obj, dist)
+	if dist <= spellW.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetW = function()
+	return TS.get_result(TargetSelectionW).obj
+end
+local TargetSelectionE = function(res, obj, dist)
+	if dist <= spellE.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetE = function()
+	return TS.get_result(TargetSelectionE).obj
+end
+local TargetSelectionR = function(res, obj, dist)
 	if dist <= spellR3.range then
 		res.obj = obj
 		return true
 	end
 end
-
-local TargetSelectionGap = function(res, obj, dist)
-	if dist <(spellE.range * 2) - 70 then
-		res.obj = obj
-		return true
-	end
-end
-
-local GetTarget = function()
-	return TS.get_result(TargetSelection).obj
+local GetTargetR = function()
+	return TS.get_result(TargetSelectionR).obj
 end
 
 local GetTargetGap = function()
@@ -239,19 +259,26 @@ end
 
 
 local function Combo()
-	local target = GetTarget()
-	if menu.c.ecombo:get() and common.IsValidTarget(target) and target then
+	if menu.c.ecombo:get() then 
+	local target = GetTargetE()
+	   if common.IsValidTarget(target) and target then
 		local pos = preds.circular.get_prediction(spellE, target)
 		if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range then
 			player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		end
 	end	
-	if menu.c.qcombo:get() and common.IsValidTarget(target) and target then
+	end
+	if menu.c.qcombo:get() then
+	local target = GetTargetQ()
+	   if common.IsValidTarget(target) and target then
 		if(target.pos:dist(player) <= spellQ.range) then
 			player:castSpell("obj", 0, target)
 		end		 
 	end
-	if menu.c.rcombo:get() and common.IsValidTarget(target) and target and not common.CheckBuffType(target, 17) then
+	end
+	if menu.c.rcombo:get() then 
+	   local target = GetTargetR()
+	   if common.IsValidTarget(target) and target and not common.CheckBuffType(target, 17) then
 		if menu.c.rmode:get() == 1 then
 			local pos = preds.linear.get_prediction(spellR, target)
 			if pos and player.pos:to2D():dist(pos.endPos) <= spellR.range then
@@ -275,10 +302,23 @@ local function Combo()
 			end
 		end
 	end 
+	end
 end
 
+local function SemiR()
+if menu.keys.semir:get() and menu.c.semirc:get() then
+local target = GetTargetR()
+   if target and target.isVisible and common.IsValidTarget(target) and not common.CheckBuffType(target, 17) then
+   local pos = preds.linear.get_prediction(spellR3, target)
+      if pos and player.pos:to2D():dist(pos.endPos) <= spellR3.range then
+	  player:castSpell("pos", 3, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+	  end
+   end
+end
+end   
+
 local function Harass()
-	local target = GetTarget()
+	local target = GetTargetQ()
 	if menu.h.qharass:get() then
 		if common.IsValidTarget(target) and target and(player.mana / player.maxMana) * 100 >= menu.h.manaq:get() then
 			if(target.pos:dist(player) <= spellQ.range) then
@@ -584,8 +624,12 @@ local function OnTick()
 	if menu.keys.combokey:get() then
 		Combo()
 	end
+	if menu.keys.semir:get() then
+		SemiR()
+	end
 end
 
 cb.add(cb.draw, OnDraw)
+cb.add(cb.tick, OnTick)
 
 orb.combat.register_f_pre_tick(OnTick)
