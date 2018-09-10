@@ -1,4 +1,4 @@
-local version = "3.6"
+local version = "3.7"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -42,6 +42,7 @@ menu.c:boolean("wcombo", "Use W in Combo", true)
 menu.c:dropdown("wmode", "W Mode", 2, {"Always", "Only Hard CC", "Slowed"})
 menu.c:boolean("ecombo", "Use E in Combo", true)
 menu.c:boolean("rcombo", "Use R To Finsih Enemy", true)
+menu.c:boolean("semirc", "Semi Manual R (check keybinds)", true)
 
 menu:menu("h", "Harass")
 menu.h:boolean("qharass", "Use Q in Harass", true)
@@ -86,6 +87,7 @@ menu.keys:keybind("combokey", "Combo Key", "Space", nil)
 menu.keys:keybind("harasskey", "Harass Key", "C", nil)
 menu.keys:keybind("clearkey", "Lane Clear Key", "V", nil)
 menu.keys:keybind("lastkey", "Last Hit", "X", nil)
+menu.keys:keybind("semir", "Semi Manual R", "T", nil)
 
 TS.load_to_menu(menu)
 local TargetSelection = function(res, obj, dist)
@@ -96,14 +98,47 @@ local TargetSelection = function(res, obj, dist)
 end
 
 local TargetSelectionGap = function(res, obj, dist)
-	if dist < (spellQ.range * 2) - 70 then
+	if dist < (spellE.range * 2) - 70 then
 		res.obj = obj
 		return true
 	end
 end
 
-local GetTarget = function()
-	return TS.get_result(TargetSelection).obj
+local TargetSelectionQ = function(res, obj, dist)
+	if dist <= spellQ.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetQ = function()
+	return TS.get_result(TargetSelectionQ).obj
+end
+local TargetSelectionW = function(res, obj, dist)
+	if dist <= spellW.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetW = function()
+	return TS.get_result(TargetSelectionW).obj
+end
+local TargetSelectionE = function(res, obj, dist)
+	if dist <= spellE.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetE = function()
+	return TS.get_result(TargetSelectionE).obj
+end
+local TargetSelectionR = function(res, obj, dist)
+	if dist <= spellR.range then
+		res.obj = obj
+		return true
+	end
+end
+local GetTargetR = function()
+	return TS.get_result(TargetSelectionR).obj
 end
 
 local GetTargetGap = function()
@@ -157,10 +192,17 @@ function RDamage(target)
 	local damage = 0
 	if player:spellSlot(3).level > 0 then
 		damage =
-			common.CalculateMagicDamage(target, (RLevelDamage[player:spellSlot(3).level] + (common.GetTotalAP() * .75)), player)
+		common.CalculateMagicDamage(target, (RLevelDamage[player:spellSlot(3).level] + (common.GetTotalAP() * .75)), player)
 	end
 	return damage
 end
+--[[function RMissingHP(target)
+    local bonus = 0
+	local MissingHealth = (target.maxHealth - target.health) * 100
+	if MissingHealth <= 6.67 then
+	   bonus = 10
+	end
+end]]
 
 local waiting = 0
 local uhhh = 0
@@ -185,8 +227,9 @@ end
 end
 
 local function Combo()
-local target = GetTarget()
-if menu.c.wcombo:get() and common.IsValidTarget(target) and target then
+if menu.c.wcombo:get() then 
+local target = GetTargetW()
+   if common.IsValidTarget(target) and target then
 local pos = preds.circular.get_prediction(spellW, target)
    if menu.c.wmode:get() == 1 then
       if pos and player.pos:to2D():dist(pos.endPos) <= spellW.range then
@@ -212,30 +255,51 @@ local pos = preds.circular.get_prediction(spellW, target)
       end	
    end	  
 end
-if menu.c.qcombo:get() and common.IsValidTarget(target) and target then
+end
+if menu.c.qcombo:get() then 
+local target = GetTargetQ()
+   if common.IsValidTarget(target) and target then
 local pos = preds.linear.get_prediction(spellQ, target)  
    if pos and player.pos:to2D():dist(pos.endPos) <= spellQ.range and not preds.collision.get_prediction(spellQ, pos, target) then
 	     player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
    end		 
 end
-if menu.c.ecombo:get() and common.IsValidTarget(target) and target then
+end
+if menu.c.ecombo:get() then 
+local target = GetTargetE()
+   if common.IsValidTarget(target) and target then
    local pos = preds.circular.get_prediction(spellE, target)
    if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range - 50 then
       player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
    end
 end
-if menu.c.rcombo:get() and common.IsValidTarget(target) and target and not common.CheckBuffType(target, 17) then
+end
+if menu.c.rcombo:get() then 
+local target = GetTargetR()
+   if common.IsValidTarget(target) and target and not common.CheckBuffType(target, 17) then
 local hp = common.GetShieldedHealth("AP", target)
    if player:spellSlot(3).state == 0 and vec3(target.x, target.y, target.z):dist(player) < spellR.range and
       RDamage(target) >= hp then
 	  player:castSpell("obj", 3, target)
    end  
 end
+end  
+end 
+
+local function SemiR()
+if menu.keys.semir:get() and menu.c.semirc:get() then
+local target = GetTargetR()
+   if target and target.isVisible and common.IsValidTarget(target) and not common.CheckBuffType(target, 17) then
+      if player:spellSlot(3).state == 0 and vec3(target.x, target.y, target.z):dist(player) < spellR.range then
+	  player:castSpell("obj", 3, target)
+	  end
+   end
+end
 end   
 
 local function Harass()
-local target = GetTarget()
       if menu.h.qharass:get() then
+	  local target = GetTargetQ()
 	     if common.IsValidTarget(target) and target and (player.mana / player.maxMana) * 100 >= menu.h.manaq:get() then
 		    if (target.pos:dist(player) < spellQ.range) then 
 			local pos = preds.linear.get_prediction(spellQ, target)
@@ -246,6 +310,7 @@ local target = GetTarget()
 		 end
       end
 	  if menu.h.wharass:get() then
+	  local target = GetTargetW()
 	     if common.IsValidTarget(target) and target and (player.mana / player.maxMana) * 100 >= menu.h.manaw:get() then
 		    if (target.pos:dist(player) < spellW.range) then 
 			local pos = preds.circular.get_prediction(spellW, target)
@@ -474,6 +539,9 @@ local function OnTick()
 	end
 	if menu.keys.combokey:get() then
 		Combo()
+	end
+	if menu.keys.semir:get() then
+		SemiR()
 	end
 end
 
