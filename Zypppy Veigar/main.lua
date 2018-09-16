@@ -1,4 +1,4 @@
-local version = "3.7"
+local version = "3.8"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -192,7 +192,7 @@ function RDamage(target)
 	local damage = 0
 	if player:spellSlot(3).level > 0 then
 		damage =
-		common.CalculateMagicDamage(target, (RLevelDamage[player:spellSlot(3).level] + (common.GetTotalAP() * .75)), player)
+		common.CalculateMagicDamage(target, (RLevelDamage[player:spellSlot(3).level] + (common.GetTotalAP() * .75)*(target.maxHealth - target.health) / target.maxHealth)*1.5, player)
 	end
 	return damage
 end
