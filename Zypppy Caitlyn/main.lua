@@ -1,4 +1,4 @@
-local version = "3.0"
+local version = "3.4"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -13,6 +13,7 @@ delay = 0.25,
 boundingRadiusMod = 0
 }
 
+local spellAA = {range = 1300}
 
 local spellW = {
 range = 800, 
@@ -25,7 +26,7 @@ boundingRadiusMod = 0
 local spellE = {
 range = 750, 
 width = 70, 
-speed = math.huge, 
+speed = 1600, 
 delay = 0.35, 
 boundingRadiusMod = 0,
 collision = {
@@ -47,6 +48,8 @@ menu.h:slider("manaq", "Q Mana", 80, 1, 100, 1)
 menu.ks:boolean("qks", "Use Q to KillSteal", true)]]
 
 menu:menu("draws", "Draw Settings")
+menu.draws:boolean("drawaa", "Draw AA Trapped Range", true)
+menu.draws:color("coloraa", "  ^- Color", 255, 255, 255, 255)
 menu.draws:boolean("drawq", "Draw Q Range", true)
 menu.draws:color("colorq", "  ^- Color", 255, 255, 255, 255)
 menu.draws:boolean("draww", "Draw W Range", true)
@@ -190,6 +193,9 @@ end
 		 
 local function OnDraw()
  if player.isOnScreen then 
+    if menu.draws.drawaa:get() then
+	   graphics.draw_circle(player.pos, spellAA.range, 2, menu.draws.coloraa:get(), 50)
+	end
     if menu.draws.drawq:get() then
 	   graphics.draw_circle(player.pos, spellQ.range, 2, menu.draws.colorq:get(), 50)
 	end
@@ -240,8 +246,22 @@ local enemy = common.GetEnemyHeroes()
        end		  
 end	  
 
+local function AATrapped()
+local enemy = common.GetEnemyHeroes()
+   for i, enemies in ipairs(enemy) do
+      if enemies and common.IsValidTarget(enemies) and not common.CheckBuffType(enemies, 17) then
+	     if vec3(enemies.x, enemies.y, enemies.z):dist(player) <= 1300 then
+		    if (common.CheckBuff(enemies, "caitlynyordletrapinternal")) then
+			player:attack(enemies)
+			end
+		 end
+      end
+   end
+end   
+
 local function OnTick()
        AutoTrapped()
+	   --AATrapped()
        AutoCC()
     if menu.misc.Gap.GapE:get() then
 		EGapcloser()
@@ -254,6 +274,7 @@ local function OnTick()
 	end
 	if menu.keys.combokey:get() then
 		Combo()
+		AATrapped()
 	end
 end
 
