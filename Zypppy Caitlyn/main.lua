@@ -169,16 +169,13 @@ end
 local function Combo()
 if menu.c.ecombo:get() then 
 local target = GetTargetE()
-local targetw = GetTargetW()
    if common.IsValidTarget(target) and target then
    local pos = preds.linear.get_prediction(spellE, target)
-   local posw = preds.circular.get_prediction(spellW, target)
-   if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range and not preds.collision.get_prediction(spellE, pos, target) then
+   if pos and player.pos:to2D():dist(pos.endPos) < spellE.range and not preds.collision.get_prediction(spellE, pos, target) then
       player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
-	  player:castSpell("posw", 1, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
    end
 end
-end
+end 
 end 
 
 local function Harass()
