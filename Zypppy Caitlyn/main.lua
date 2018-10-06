@@ -1,4 +1,4 @@
-local version = "3.6"
+local version = "3.7"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -59,8 +59,8 @@ menu.draws:color("colore", "  ^- Color", 255, 255, 255, 255)
 
 menu:menu("misc", "Misc.")
 menu.misc:menu("setq", "Q Settings")
-menu.misc.setq:boolean("logicalq" , "On Trappped Enemies", true)
-menu.misc.setq:boolean("logicalq2", "On Netted Enemies", true)
+menu.misc.setq:boolean("logicalq" , "On Trappped/Netted Enemies", true)
+menu.misc.setq:boolean("logicalq2", "Only out of AA range", true)
 menu.misc:menu("setw", "W Settings")
 menu.misc.setw:boolean("logicalw" , "On Hard CC'ed", true)
 --menu.misc.setq:boolean("teleportw" , "On Teleport", true)
@@ -141,8 +141,8 @@ if menu.misc.Gap.GapE:get() then
    local dasher = objManager.enemies[i]
        if dasher.type == TYPE_HERO and dasher.team == TEAM_ENEMY then
           if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
-             player.pos:dist(dasher.path.point[1]) < spellE.range then
-             if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) and not preds.collision.get_prediction(spellE, pos, dasher) then
+             player.pos:dist(dasher.path.point[1]) <= spellE.range then
+             if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
                 player:castSpell("pos", 2, dasher.path.point2D[1])
              end
           end
@@ -156,7 +156,7 @@ if menu.misc.Gap.GapW:get() then
    local dasher = objManager.enemies[i]
        if dasher.type == TYPE_HERO and dasher.team == TEAM_ENEMY then
           if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
-             player.pos:dist(dasher.path.point[1]) < spellW.range then
+             player.pos:dist(dasher.path.point[1]) <= spellW.range then
              if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
                 player:castSpell("pos", 1, dasher.path.point2D[1])
              end
@@ -169,10 +169,13 @@ end
 local function Combo()
 if menu.c.ecombo:get() then 
 local target = GetTargetE()
+local targetw = GetTargetW()
    if common.IsValidTarget(target) and target then
    local pos = preds.linear.get_prediction(spellE, target)
+   local posw = preds.circular.get_prediction(spellW, target)
    if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range and not preds.collision.get_prediction(spellE, pos, target) then
       player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+	  player:castSpell("posw", 1, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
    end
 end
 end
@@ -182,9 +185,9 @@ local function Harass()
       if menu.h.qharass:get() then
 	  local target = GetTargetQ()
 	     if common.IsValidTarget(target) and target and (player.mana / player.maxMana) * 100 >= menu.h.manaq:get() then
-		    if (target.pos:dist(player) < spellQ.range) and (target.pos:dist(player) > 650) then 
+		    if (target.pos:dist(player) <= spellQ.range) and (target.pos:dist(player) > 650) then 
 			local pos = preds.linear.get_prediction(spellQ, target)
-			   if pos and pos.startPos:dist(pos.endPos) < spellQ.range then
+			   if pos and pos.startPos:dist(pos.endPos) <= spellQ.range then
 			   player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 			   end
 			end
@@ -223,7 +226,7 @@ local enemy = common.GetEnemyHeroes()
 				   common.CheckBuffType(enemies, 29) or
 				   common.CheckBuffType(enemies, 32) or
 				   common.CheckBuffType(enemies, 34) then
-				   if pos and pos.startPos:dist(pos.endPos) < spellW.range then
+				   if pos and pos.startPos:dist(pos.endPos) <= spellW.range then
 				   player:castSpell("pos", 1, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 				   end
 				end
@@ -235,18 +238,18 @@ local function AutoTrapped()
 local enemy = common.GetEnemyHeroes()
       for i, enemies in ipairs(enemy) do
 	      if enemies and common.IsValidTarget(enemies) then
-		     if menu.misc.setq.logicalq:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) <= spellQ.range then
+		     if menu.misc.setq.logicalq:get() and not menu.misc.setq.logicalq2:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) <= spellQ.range then
 			 local pos = preds.linear.get_prediction(spellQ, enemies)
-			    if (common.CheckBuff(enemies, "caitlynyordletrapdebuff")) then
-			       if pos and pos.startPos:dist(pos.endPos) < spellQ.range then
+			    if (common.CheckBuff(enemies, "caitlynyordletrapinternal")) then
+			       if pos and pos.startPos:dist(pos.endPos) <= spellQ.range then
 			       player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		           end
                 end
              end
-			 if menu.misc.setq.logicalq2:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) <= spellQ.range then
+			 if menu.misc.setq.logicalq2:get() and menu.misc.setq.logicalq:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) <= spellQ.range then
 			 local pos = preds.linear.get_prediction(spellQ, enemies)
 			    if (common.CheckBuff(enemies, "caitlynyordletrapinternal")) then
-			       if pos and pos.startPos:dist(pos.endPos) < spellQ.range then
+			       if pos and pos.startPos:dist(pos.endPos) <= spellQ.range and (enemies.pos:dist(player) > 650) then
 			       player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		           end
                 end
