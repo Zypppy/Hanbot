@@ -1,4 +1,4 @@
-local version = "3.4"
+local version = "3.6"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -60,6 +60,7 @@ menu.draws:color("colore", "  ^- Color", 255, 255, 255, 255)
 menu:menu("misc", "Misc.")
 menu.misc:menu("setq", "Q Settings")
 menu.misc.setq:boolean("logicalq" , "On Trappped Enemies", true)
+menu.misc.setq:boolean("logicalq2", "On Netted Enemies", true)
 menu.misc:menu("setw", "W Settings")
 menu.misc.setw:boolean("logicalw" , "On Hard CC'ed", true)
 --menu.misc.setq:boolean("teleportw" , "On Teleport", true)
@@ -141,7 +142,7 @@ if menu.misc.Gap.GapE:get() then
        if dasher.type == TYPE_HERO and dasher.team == TEAM_ENEMY then
           if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
              player.pos:dist(dasher.path.point[1]) < spellE.range then
-             if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
+             if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) and not preds.collision.get_prediction(spellE, pos, dasher) then
                 player:castSpell("pos", 2, dasher.path.point2D[1])
              end
           end
@@ -237,6 +238,14 @@ local enemy = common.GetEnemyHeroes()
 		     if menu.misc.setq.logicalq:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) <= spellQ.range then
 			 local pos = preds.linear.get_prediction(spellQ, enemies)
 			    if (common.CheckBuff(enemies, "caitlynyordletrapdebuff")) then
+			       if pos and pos.startPos:dist(pos.endPos) < spellQ.range then
+			       player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+		           end
+                end
+             end
+			 if menu.misc.setq.logicalq2:get() and player:spellSlot(0).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) <= spellQ.range then
+			 local pos = preds.linear.get_prediction(spellQ, enemies)
+			    if (common.CheckBuff(enemies, "caitlynyordletrapinternal")) then
 			       if pos and pos.startPos:dist(pos.endPos) < spellQ.range then
 			       player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		           end
