@@ -1,4 +1,4 @@
-local version = "3.1"
+local version = "3.8"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -44,6 +44,13 @@ menu:menu("h", "Harass")
 menu.h:boolean("qharass", "Use Q in Harass", true)
 menu.h:boolean("qnadoharass", "Use Tornado in Harass", true)
 
+menu:menu("lc", "Lane Clear")
+menu.lc:boolean("qlc", "Use Q in Lane Clear", true)
+menu.lc:dropdown("qlcmode", "Q Mode", 2, {"Push", "Only Last Hit"})
+menu.lc:boolean("qnadolc", "Use Q Tornado in Lane Clear", false)
+--menu.lc:boolean("elc", "Use E in Lane Clear", true)
+--menu.lc:dropdown("elcmode", "E Mode", 2, {"Push", "Only Last Hit"})
+
 menu:menu("draws", "Draw Settings")
 menu.draws:boolean("drawq", "Draw Q Range", true)
 menu.draws:color("colorq", "  ^- Color", 255, 255, 255, 255)
@@ -61,17 +68,18 @@ local TargetSelectionQ = function(res, obj, dist)
 	   res.obj = obj
 	   return true
 	end
-	if dist <= spellQ2.range then
-	   res.obj = obj
-	   return true
-	end
+end
+local GetTargetQ = function()
+	return TS.get_result(TargetSelectionQ).obj
+end
+local TargetSelectionQ3 = function(res, obj, dist)
 	if dist <= spellQ3.range then
 	   res.obj = obj
 	   return true
 	end
 end
-local GetTargetQ = function()
-	return TS.get_result(TargetSelectionQ).obj
+local GetTargetQ3 = function()
+	return TS.get_result(TargetSelectionQ3).obj
 end
 local TargetSelectionE = function(res, obj, dist)
 	if dist <= spellE.range then
@@ -186,6 +194,9 @@ local function Combo()
 		  player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		  end
 	   end
+	end
+	if menu.c.qcombo:get() and player:spellSlot(0).state == 0 and not menu.c.qnadopred:get() then
+	local target = GetTargetQ3()
 	   if common.IsValidTarget(target) and target and player:spellSlot(0).name == "YasuoQ3Wrapper" then
 	   local pos = preds.linear.get_prediction(spellQ3, target)
 	      if pos and player.pos:to2D():dist(pos.endPos) <= spellQ3.range then
@@ -201,6 +212,9 @@ local function Combo()
 		  player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		  end
 	   end
+	end
+	if menu.c.qcombo:get() and player:spellSlot(0).state == 0 and menu.c.qnadopred:get() then
+	   local target = GetTargetQ3()
 	   if common.IsValidTarget(target) and target and player:spellSlot(0).name == "YasuoQ3Wrapper" then
 	   local pos = preds.linear.get_prediction(spellQ3, target)
 	      if pos and player.pos:to2D():dist(pos.endPos) <= spellQ3.range and trace_filter(spellQ3, pos, target) then
@@ -228,6 +242,60 @@ local function Combo()
        end
     end
 end	
+
+local function LaneClear()
+   if menu.lc.qlc:get()and player:spellSlot(0).state == 0 and player:spellSlot(0).name ~= "YasuoQ3Wrapper" then
+   local enemyMinionsQ = common.GetMinionsInRange(spellQ1.range, TEAM_ENEMY)
+      for i = 0, objManager.minions.size[TEAM_ENEMY] - 1 do
+	  local minion = objManager.minions[TEAM_ENEMY][i]
+	     if minion and not minion.isDead and common.IsValidTarget(minion) and menu.lc.qlcmode:get() == 1 then
+		    if minion and minion.pos:dist(player.pos) <= spellQ1.range and not minion.isDead and common.IsValidTarget(minion) then
+			local minionPos = vec3(minion.x, minion.y, minion.z)
+			   if minionPos then
+			   local seg = preds.linear.get_prediction(spellQ1, minion)
+			      if seg and seg.startPos:dist(seg.endPos) < spellQ1.range then
+				     player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
+				  end
+			   end
+            end
+         end
+		 if minion and not minion.isDead and common.IsValidTarget(minion) and menu.lc.qlcmode:get() == 2 then
+		    if minion and minion.pos:dist(player.pos) <= spellQ1.range and not minion.isDead and common.IsValidTarget(minion) then
+			local minionPos = vec3(minion.x, minion.y, minion.z)
+			   if minionPos then
+			   local seg = preds.linear.get_prediction(spellQ1, minion)
+			      if seg and seg.startPos:dist(seg.endPos) < spellQ1.range then
+				     if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true) - 150) then
+				         orb.core.set_pause_attack(1)
+			         end
+				     if (QDamage(minion) >= orb.farm.predict_hp(minion, delay / 2, true)) then
+					     player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
+				     end
+				  end
+			   end
+            end
+         end
+      end
+   end
+   if menu.lc.qnadolc:get()and player:spellSlot(0).state == 0 and player:spellSlot(0).name == "YasuoQ3Wrapper" then
+   local enemyMinionsQ = common.GetMinionsInRange(spellQ3.range, TEAM_ENEMY)   
+      for i = 0, objManager.minions.size[TEAM_ENEMY] - 1 do
+	  local minion = objManager.minions[TEAM_ENEMY][i]
+	     if minion and not minion.isDead and common.IsValidTarget(minion) then
+		    if minion and minion.pos:dist(player.pos) <= spellQ3.range and not minion.isDead and common.IsValidTarget(minion) then
+			local minionPos = vec3(minion.x, minion.y, minion.z)
+			   if minionPos then
+			   local seg = preds.linear.get_prediction(spellQ3, minion)
+			      if seg and seg.startPos:dist(seg.endPos) < spellQ3.range then
+				     player:castSpell("pos", 0, vec3(seg.endPos.x, minionPos.y, seg.endPos.y))
+				  end
+			   end
+            end
+         end
+      end		 
+   end  
+end
+
 local function Harass()
     if menu.h.qharass:get() and player:spellSlot(0).state == 0 then
 	local target = GetTargetQ()
@@ -237,6 +305,9 @@ local function Harass()
 		  player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		  end
 	   end
+	end
+	if menu.h.qharass:get() and player:spellSlot(0).state == 0 then
+	local target = GetTargetQ3()
 	   if common.IsValidTarget(target) and target and player:spellSlot(0).name == "YasuoQ3Wrapper" and menu.h.qnadoharass:get() then
 	   local pos = preds.linear.get_prediction(spellQ3, target)
 	      if pos and player.pos:to2D():dist(pos.endPos) <= spellQ3.range then
@@ -266,6 +337,9 @@ local function OnTick()
 	end
 	if menu.keys.harasskey:get() then
 	   Harass()
+	end
+	if menu.keys.clearkey:get() then
+		LaneClear()
 	end
 end
 
