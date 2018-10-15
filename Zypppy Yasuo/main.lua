@@ -262,6 +262,7 @@ local function LaneClear()
 		 if minion and not minion.isDead and common.IsValidTarget(minion) and menu.lc.qlcmode:get() == 2 then
 		    if minion and minion.pos:dist(player.pos) <= spellQ1.range and not minion.isDead and common.IsValidTarget(minion) then
 			local minionPos = vec3(minion.x, minion.y, minion.z)
+			delay = 0.25 + player.pos:dist(minion.pos) / 3000
 			   if minionPos then
 			   local seg = preds.linear.get_prediction(spellQ1, minion)
 			      if seg and seg.startPos:dist(seg.endPos) < spellQ1.range then
