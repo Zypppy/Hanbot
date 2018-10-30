@@ -433,44 +433,33 @@ local function OnDraw()
 	   graphics.draw_circle(player.pos, spellR.range, 2, menu.draws.colorq:get(), 50)
 	end
  end
+
 end
 
 local function AutoCC()
-local enemy = common.GetEnemyHeroes()
-      for i, enemies in ipairs(enemy) do
-	      if enemies and common.IsValidTarget(enemies) and not common.CheckBuffType(enemies, 17) then
+	TS.get_result(function(res, enemies, dist)
+	      if enemies and common.IsValidTarget(enemies) and not enemies.buff[17] then
+	      	if enemies.buff[11] or enemies.buff[5] or enemies.buff[22] or enemies.buff[8]or enemies.buff[24] or enemies.buff[29] or enemies.buff[32] or enemies.buff[34] then
 		     if menu.misc.sete.ECC:get() and player:spellSlot(2).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) < spellE.range then
-			 local pos = preds.linear.get_prediction(spellE, enemies)
-			    if common.CheckBuffType(enemies, 11) or 
-				   common.CheckBuffType(enemies, 5) or 
-				   common.CheckBuffType(enemies, 22) or
-				   common.CheckBuffType(enemies, 8) or
-				   common.CheckBuffType(enemies, 24) or
-				   common.CheckBuffType(enemies, 29) or
-				   common.CheckBuffType(enemies, 32) or
-				   common.CheckBuffType(enemies, 34) then
-				   if pos and pos.startPos:dist(pos.endPos) < spellE.range then
-				   player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
-				   end
-				 end
+			 	local pos = preds.linear.get_prediction(spellE, enemies)
+			    
+			     if pos and pos.startPos:dist(pos.endPos) < spellE.range then
+			   		player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+			   	 end
 			 end
-             if menu.misc.setw.WCC:get() and player:spellSlot(1).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) < spellW.range then
-			 local pos = preds.circular.get_prediction(spellW, enemies)
-			    if common.CheckBuffType(enemies, 11) or 
-				   common.CheckBuffType(enemies, 5) or 
-				   common.CheckBuffType(enemies, 22) or
-				   common.CheckBuffType(enemies, 8) or
-				   common.CheckBuffType(enemies, 24) or
-				   common.CheckBuffType(enemies, 29) or
-				   common.CheckBuffType(enemies, 32) or
-				   common.CheckBuffType(enemies, 34) then
-				   if pos and pos.startPos:dist(pos.endPos) < spellW.range then
-				   player:castSpell("pos", 1, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
-				   end
-				 end
-			 end			 
-		  end
-       end		  
+			 if game.time >= player.passiveCooldownEndTime and enemies.pos2D:dist(player.pos2D) <= 1150 then
+			 	player:attack(enemies)
+			 end
+
+			 if menu.misc.setw.WCC:get() and player:spellSlot(1).state == 0 and vec3(enemies.x, enemies.y, enemies.z):dist(player) < spellW.range then
+			 	local pos = preds.circular.get_prediction(spellW, enemies)
+			    if pos and pos.startPos:dist(pos.endPos) < spellW.range then
+			   		player:castSpell("pos", 1, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+			    end
+			 end
+			end		 
+		  end	
+    end)  
 end
 
 local function AutoDash()
