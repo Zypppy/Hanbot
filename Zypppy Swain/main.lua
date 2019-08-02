@@ -1,4 +1,4 @@
-local version = "3.6"
+local version = "3.7"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -45,6 +45,7 @@ menu.c:boolean("qcombo", "Use Q in Combo", true)
 menu.c:boolean("wcombo", "Use W in Combo", true)
 menu.c:dropdown("wmode", "W Mode", 2, {"Always", "Only Hard CC"})
 menu.c:boolean("ecombo", "Use E in Combo", true)
+menu.c:boolean("eslow", "Use E Slow Pred", false)
 menu.c:boolean("rcombo", "Use R", true)
 menu.c:slider("rhit", "R Enemies Hit", 2, 1, 5, 1)
 
@@ -324,7 +325,7 @@ if menu.c.wcombo:get() then
 	end
 end
 
-if menu.c.ecombo:get() then
+if menu.c.ecombo:get() and not menu.c.eslow:get() then
 	local target = GetTargetE()
    if common.IsValidTarget(target) then
 	local pos = preds.linear.get_prediction(spellE, target) 
@@ -335,6 +336,15 @@ if menu.c.ecombo:get() then
 	end 
 end 
 end
+if menu.c.ecombo:get() and menu.c.eslow:get() and player:spellSlot(2).state == 0 then
+   local target = GetTargetE()
+   if common.IsValidTarget(target) and target then
+      local pos = preds.linear.get_prediction(spellE, target)
+	  if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range and trace_filter(spellE, pos, target) then
+	  player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+	  end
+   end
+end   
 	  
 if menu.c.rcombo:get() then
    if #count_enemies_in_range(player.pos, spellR.range) >= menu.c.rhit:get() then 
