@@ -38,6 +38,7 @@ minion = true
 
 local menu = menu("ZypppyCaitlyn", "Caitlyn By Zypppy")
 menu:menu("c", "Combo")
+menu.c:boolean("qcombo", "Use Q in Combo", true)
 menu.c:boolean("ecombo", "Use E in Combo", true)
 
 menu:menu("h", "Harass")
@@ -176,6 +177,15 @@ local target = GetTargetE()
    end
 end
 end 
+if menu.c.qcombo:get() and 
+   local target = GetTargetQ()
+   if common.IsValidTarget(target) and target and player:spellSlot(0).state == 0 then
+      local pos = preds.linear.get_prediction(spellQ, target)
+	  if pos and player.pos:to2D():dist(pos.endPos) <= spellQ.range then
+	  player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
+	  end
+   end
+end   
 end 
 
 local function Harass()
