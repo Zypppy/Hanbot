@@ -1,4 +1,4 @@
-local version = "3.7"
+local version = "3.8"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
