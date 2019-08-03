@@ -177,7 +177,7 @@ local target = GetTargetE()
    end
 end
 end 
-if menu.c.qcombo:get() and 
+if menu.c.qcombo:get() then
    local target = GetTargetQ()
    if common.IsValidTarget(target) and target and player:spellSlot(0).state == 0 then
       local pos = preds.linear.get_prediction(spellQ, target)
