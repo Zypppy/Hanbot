@@ -178,9 +178,9 @@ local target = GetTargetE()
 end
 end 
 if menu.c.qcombo:get() then
-   local target = GetTargetQ()
-   if common.IsValidTarget(target) and target and player:spellSlot(0).state == 0 then
-      local pos = preds.linear.get_prediction(spellQ, target)
+   local targetq = GetTargetQ()
+   if common.IsValidTarget(targetq) and targetq and player:spellSlot(0).state == 0 then
+      local pos = preds.linear.get_prediction(spellQ, targetq)
 	  if pos and player.pos:to2D():dist(pos.endPos) <= spellQ.range then
 	  player:castSpell("pos", 0, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 	  end
