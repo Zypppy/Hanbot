@@ -1,4 +1,4 @@
-local version = "3.7"
+local version = "3.9"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -13,7 +13,8 @@ delay = 0.5,
 boundingRadiusMod = 0,
 collision = {
 hero = false,
-minion = true
+minion = false,
+wall = true
 }
 }
 
@@ -33,7 +34,8 @@ delay = 0.5,
 boundingRadiusMod = 1,
 collision = {
 hero = false,
-minion = true
+minion = false,
+wall = true
 }
 } 
 
@@ -46,8 +48,6 @@ menu.c:boolean("wcombo", "Use W in Combo", true)
 menu.c:dropdown("wmode", "W Mode", 2, {"Always", "Only Hard CC"})
 menu.c:boolean("ecombo", "Use E in Combo", true)
 menu.c:boolean("eslow", "Use E Slow Pred", false)
-menu.c:boolean("rcombo", "Use R", true)
-menu.c:slider("rhit", "R Enemies Hit", 2, 1, 5, 1)
 
 menu:menu("h", "Harass")
 menu.h:boolean("qharass", "Use Q in Harass", true)
@@ -55,8 +55,6 @@ menu.h:slider("qhmana", "Q Mana", 80, 1, 100, 1)
 menu.h:boolean("wharass", "Use W in Harass", true)
 menu.h:slider("whmana", "W Mana", 80, 1, 100, 1)
 menu.h:dropdown("wmode", "W Mode", 2, {"Always", "Only Hard CC"})
-menu.h:boolean("eharass", "Use E in Harass", true)
-menu.h:slider("ehmana", "E Mana", 80, 1, 100, 1)
 
 menu:menu("lc", "Lane Clear")
 menu.lc:boolean("qlaneclear", "Use Q in Lane Clear", true)
@@ -80,8 +78,6 @@ menu.misc.sete:boolean("Einterr", "Auto E to Interrupt", true)
 menu.misc.sete:menu("interruptmenue", "E Interrupting")
 menu.misc:menu("setw", "W Settings")
 menu.misc.setw:boolean("WCC", "Auto W on CC'ed enemies", true)
-menu.misc:menu("Gap", "Gapcloser Settings")
-menu.misc.Gap:boolean("GapA", "Use E for Anti-Gapclose", true)
 
 local interruptableSpells = {
 ["anivia"] = {
@@ -224,17 +220,6 @@ local GetTargetE = function()
 	return TS.get_result(TargetSelectionE).obj
 end
 
-local TargetSelectionGap = function(res, obj, dist)
-	if dist <(spellE.range * 2) - 70 then
-		res.obj = obj
-		return true
-	end
-end
-
-local GetTargetGap = function()
-	return TS.get_result(TargetSelectionGap).obj
-end
-
 local function count_enemies_in_range(pos, range)
 	local enemies_in_range = {}
 	for i = 0, objManager.enemies_n - 1 do
@@ -264,7 +249,7 @@ local trace_filter = function(input, segment, target)
 	if preds.trace.linear.hardlockmove(input, segment, target) then
 		return true
 	end
-	if segment.startPos:dist(segment.endPos) <= 625 then
+	if segment.startPos:dist(segment.endPos) <= 725 then
 		return true
 	end
 	if preds.trace.newpath(target, 0.033, 0.5) then
@@ -272,26 +257,10 @@ local trace_filter = function(input, segment, target)
 	end
 end
 
-local function EGapcloser()
-	if menu.misc.Gap.GapA:get() then
-		for i = 0, objManager.enemies_n - 1 do
-			local dasher = objManager.enemies[i]
-			if dasher.type == TYPE_HERO and dasher.team == TEAM_ENEMY then
-				if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
-				player.pos:dist(dasher.path.point[1]) < spellE.range then
-					if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
-						player:castSpell("obj", 2, player)
-					end
-				end
-			end
-		end
-	end
-end
-
 local function Combo()
 if menu.c.qcombo:get() then
 	local target = GetTargetQ()
-	if common.IsValidTarget(target) then
+	if common.IsValidTarget(target) and player:spellSlot(0).state == 0 then
 		local pos = preds.linear.get_prediction(spellQ, target)
 		if pos and pos.startPos:dist(pos.endPos) <= spellQ.range and not preds.collision.get_prediction(spellQ, pos, target) then
 			if target.pos:dist(player.pos) <= spellQ.range then
@@ -303,7 +272,7 @@ end
 
 if menu.c.wcombo:get() then
 	local target = GetTargetW()
-	if common.IsValidTarget(target) then
+	if common.IsValidTarget(target) and player:spellSlot(1).state == 0 then
 		local pos = preds.circular.get_prediction(spellW, target) 
 		if pos and pos.startPos:dist(pos.endPos) <= spellW.range then
 			if target.pos:dist(player.pos) <= spellW.range and menu.c.wmode:get() == 1 then
@@ -327,9 +296,9 @@ end
 
 if menu.c.ecombo:get() and not menu.c.eslow:get() then
 	local target = GetTargetE()
-   if common.IsValidTarget(target) then
+   if common.IsValidTarget(target) and player:spellSlot(2).state == 0 then
 	local pos = preds.linear.get_prediction(spellE, target) 
-	if pos and pos.startPos:dist(pos.endPos) <= spellE.range then
+	if pos and pos.startPos:dist(pos.endPos) <= spellE.range and not preds.collision.get_prediction(spellE, pos, target) then
 		if target.pos:dist(player.pos) <= spellE.range then
 			player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 		end
@@ -340,17 +309,11 @@ if menu.c.ecombo:get() and menu.c.eslow:get() and player:spellSlot(2).state == 0
    local target = GetTargetE()
    if common.IsValidTarget(target) and target then
       local pos = preds.linear.get_prediction(spellE, target)
-	  if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range and trace_filter(spellE, pos, target) then
+	  if pos and player.pos:to2D():dist(pos.endPos) <= spellE.range and trace_filter(spellE, pos, target) and not preds.collision.get_prediction(spellE, pos, target) then
 	  player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
 	  end
    end
 end   
-	  
-if menu.c.rcombo:get() then
-   if #count_enemies_in_range(player.pos, spellR.range) >= menu.c.rhit:get() then 
-      player:castSpell("self", 3)
-   end
-end
 end
 
 local function Harass()
@@ -392,19 +355,6 @@ local target = GetTargetW()
 	end
 end
 end
-if menu.h.eharass:get() then
-local target = GetTargetE()
-   if common.IsValidTarget(target) and target and (player.mana / player.maxMana) * 100 >= menu.h.ehmana:get() then
-      if (target.pos:dist(player) < spellE.range) then
-	  local pos = preds.linear.get_prediction(spellE, target)
-	      if pos and pos.startPos:dist(pos.endPos) <= spellE.range then
-		     if target.pos:dist(player.pos) <= spellE.range then
-			 player:castSpell("pos", 2, vec3(pos.endPos.x, mousePos.y, pos.endPos.y))
-			 end
-		  end
-       end
-    end	
-end	
 end
 	
 local function LaneClear()
@@ -489,9 +439,9 @@ local function AutoDash()
 			seg.startPos = player.path.serverPos2D
 			seg.endPos = vec2(pred_pos.x, pred_pos.y)
 
-			--if not preds.collision.get_prediction(spellE, seg, target.pos:to2D()) then
+			if not preds.collision.get_prediction(spellE, seg, target.pos:to2D()) then
 				player:castSpell("pos", 2, vec3(pred_pos.x, target.y, pred_pos.y))
-			--end
+			end
 		end
 	end
 end
@@ -499,9 +449,9 @@ end
 local function OnTick()
         AutoCC()
 	    AutoDash()
-    if menu.misc.Gap.GapA:get() then
+    --[[if menu.misc.Gap.GapA:get() then
 		EGapcloser()
-	end
+	end]]
 	if menu.keys.combokey:get() then
 		Combo()
 	end
