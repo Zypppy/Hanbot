@@ -8,15 +8,14 @@ local common = module.load("ZypppyDiana", "common")
 local spellQ = {
 range = 900, 
 radius = 150, 
-speed = 1400, 
+speed = 1900, 
 delay = 0.25, 
 boundingRadiusMod = 1
 }
 
 local spellW = {range = 250}
-local spellE = {range = 450}
-local spellR = {range = 825}
-
+local spellE = {range = 825}
+local spellR = {range = 450}
 
 local menu = menu("ZypppyDiana", "Diana By Zypppy")
 menu:menu("c", "Combo")
@@ -24,8 +23,6 @@ menu.c:boolean("qcombo", "Use Q in Combo", true)
 menu.c:boolean("ecombo", "Use E in Combo", true)
 menu.c:boolean("wcombo", "Use W in Combo", true)
 menu.c:boolean("rcombo", "Use R in Combo", true)
---menu.c:dropdown("rmode", "R Mode", 1, {"Q->R", "R->Q"})
---menu.c:slider("misaya", "Minimum R->Q Range >=", 300, 150, 825, 1) 
 
 menu:menu("h", "Harass")
 menu.h:boolean("qharass", "Use Q in Harass", true)
@@ -33,6 +30,7 @@ menu.h:slider("manaq", "Q Mana", 80, 1, 100, 1)
 
 menu:menu("ks", "KillSteal")
 menu.ks:boolean("qks", "Use Q to KillSteal", true)
+menu.ks:boolean("eks", "Use E to KillSteal", true)
 menu.ks:boolean("rks", "Use R to KillSteal", true)
 
 menu:menu("draws", "Draw Settings")
@@ -46,10 +44,6 @@ menu.draws:boolean("drawr", "Draw R Range", true)
 menu.draws:color("colorr", "  ^- Color", 255, 255, 255, 255)
 menu.draws:boolean("drawdamage", "Draw Damage", true)
 
-menu:menu("misc", "Misc.")
-menu.misc:menu("Gap", "Gapcloser Settings")
-menu.misc.Gap:boolean("GapE", "Use E for Anti-Gapclose", true)
-
 menu:menu("keys", "Key Settings")
 menu.keys:keybind("combokey", "Combo Key", "Space", nil)
 menu.keys:keybind("harasskey", "Harass Key", "C", nil)
@@ -59,13 +53,6 @@ menu.keys:keybind("lastkey", "Last Hit", "X", nil)
 TS.load_to_menu(menu)
 local TargetSelection = function(res, obj, dist)
 	if dist <= spellQ.range then
-		res.obj = obj
-		return true
-	end
-end
-
-local TargetSelectionGap = function(res, obj, dist)
-	if dist < (spellE.range * 2) - 70 then
 		res.obj = obj
 		return true
 	end
@@ -134,16 +121,16 @@ function QDamage(target)
 	end
 	return damage
 end
-local WLevelDamage = {66, 102, 138, 174, 210}
-function WDamage(target)
+local ELevelDamage = {40, 60, 80, 100, 120}
+function EDamage(target)
 	local damage = 0
 	if player:spellSlot(1).level > 0 then
 		damage =
-		common.CalculateMagicDamage(target,(WLevelDamage[player:spellSlot(1).level] +(common.GetTotalAP() * .6)), player)
+		common.CalculateMagicDamage(target,(ELevelDamage[player:spellSlot(2).level] +(common.GetTotalAP() * .4)), player)
 	end
 	return damage
 end
-local RLevelDamage = {100, 160, 220}
+local RLevelDamage = {200, 300, 400}
 function RDamage(target)
 	local damage = 0
 	if player:spellSlot(3).level > 0 then
@@ -156,22 +143,6 @@ end
 local waiting = 0
 local uhhh = 0
 local enemy = nil
-
-local function EGapcloser()
-if menu.misc.Gap.GapE:get() then
-   for i = 0, objManager.enemies_n - 1 do
-   local dasher = objManager.enemies[i]
-       if dasher.type == TYPE_HERO and dasher.team == TEAM_ENEMY then
-          if dasher and common.IsValidTarget(dasher) and dasher.path.isActive and dasher.path.isDashing and
-             player.pos:dist(dasher.path.point[1]) <= spellE.range then
-             if player.pos2D:dist(dasher.path.point2D[1]) < player.pos2D:dist(dasher.path.point2D[0]) then
-                player:castSpell("pos", 2, dasher.path.point2D[1])
-             end
-          end
-       end
-    end
-end
-end
 
 local function Combo()
    if menu.c.qcombo:get() then
@@ -191,19 +162,19 @@ local function Combo()
 		 end
 	  end
    end
-   if menu.c.ecombo:get() then
-   local target = GetTargetE()
-      if common.IsValidTarget(target) and target then
-	     if (target.pos:dist(player) < spellE.range) then
-		    player:castSpell("self", 2)
-		 end
-	  end
-   end
    if menu.c.rcombo:get() then
    local target = GetTargetR()
       if common.IsValidTarget(target) and target then
-	     if (target.pos:dist(player) <= spellR.range) and (common.CheckBuff(target, "dianamoonlight")) then
-		    player:castSpell("obj", 3, target)
+	     if (target.pos:dist(player) < spellR.range) then
+		    player:castSpell("self", 3)
+		 end
+	  end
+   end
+   if menu.c.ecombo:get() then
+   local target = GetTargetE()
+      if common.IsValidTarget(target) and target then
+	     if (target.pos:dist(player) <= spellE.range) and (common.CheckBuff(target, "dianamoonlight")) then
+		    player:castSpell("obj", 2, target)
 		 end
 	  end
    end	  
@@ -236,10 +207,17 @@ local enemy = common.GetEnemyHeroes()
 			   end
 			end
 		 end
+		 if menu.ks.eks:get() then
+		    if player:spellSlot(2).state == 0 and EDamage(enemies) >= hp then
+			   if (enemies.pos:dist(player) <= spellE.range) then
+			      player:castSpell("obj", 2, enemies)
+			   end
+			end
+		 end
 		 if menu.ks.rks:get() then
 		    if player:spellSlot(3).state == 0 and RDamage(enemies) >= hp then
 			   if (enemies.pos:dist(player) <= spellR.range) then
-			      player:castSpell("obj", 3, enemies)
+			      player:castSpell("self", 3)
 			   end
 			end
 		 end
@@ -259,33 +237,33 @@ function DrawDamages(target)
 					yPos = yPos + 2
 				end
 				local Qdmg = 0
-				local Wdmg = 0
+				local Edmg = 0
 				local Rdmg = 0
 				Qdmg = QDamage(obj)
-				Wdmg = WDamage(obj)
+				Edmg = EDamage(obj)
 				Rdmg = RDamage(obj)
 		 
-				local damage = obj.health -(Qdmg + Wdmg + Rdmg)
+				local damage = obj.health -(Qdmg + Edmg + Rdmg)
 				local x1 = xPos +((obj.health / obj.maxHealth) * 102)
 				local x2 = xPos +(((damage > 0 and damage or 0) / obj.maxHealth) * 102)
-				if((Qdmg + Wdmg + Rdmg) < obj.health) then
+				if((Qdmg + Edmg + Rdmg) < obj.health) then
 					graphics.draw_line_2D(x1, yPos, x2, yPos, 10, 0xFFEE9922)
 				end
-				if((Qdmg + Wdmg + Rdmg) > obj.health) then
+				if((Qdmg + Edmg + Rdmg) > obj.health) then
 					graphics.draw_line_2D(x1, yPos, x2, yPos, 10, 0xFF2DE04A)
 				end
 			end
 		end
 		local pos = graphics.world_to_screen(target.pos)
-		if(math.floor((WDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100) < 100) then
+		if(math.floor((EDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100) < 100) then
 			graphics.draw_line_2D(pos.x, pos.y - 30, pos.x + 30, pos.y - 80, 1, graphics.argb(255, 255, 153, 51))
 			graphics.draw_line_2D(pos.x + 30, pos.y - 80, pos.x + 50, pos.y - 80, 1, graphics.argb(255, 255, 153, 51))
 			graphics.draw_line_2D(pos.x + 50, pos.y - 85, pos.x + 50, pos.y - 75, 1, graphics.argb(255, 255, 153, 51))
 
 			graphics.draw_text_2D(
-			tostring(math.floor(WDamage(target) + RDamage(target) + QDamage(target))) ..
+			tostring(math.floor(EDamage(target) + RDamage(target) + QDamage(target))) ..
 			" (" ..
-			tostring(math.floor((WDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100)) ..
+			tostring(math.floor((EDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100)) ..
 			"%)" .. "Not Killable",
 			20,
 			pos.x + 55,
@@ -293,14 +271,14 @@ function DrawDamages(target)
 			graphics.argb(255, 255, 153, 51)
 			)
 		end
-		if(math.floor((WDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100) >= 100) then
+		if(math.floor((EDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100) >= 100) then
 			graphics.draw_line_2D(pos.x, pos.y - 30, pos.x + 30, pos.y - 80, 1, graphics.argb(255, 150, 255, 200))
 			graphics.draw_line_2D(pos.x + 30, pos.y - 80, pos.x + 50, pos.y - 80, 1, graphics.argb(255, 150, 255, 200))
 			graphics.draw_line_2D(pos.x + 50, pos.y - 85, pos.x + 50, pos.y - 75, 1, graphics.argb(255, 150, 255, 200))
 			graphics.draw_text_2D(
-			tostring(math.floor(WDamage(target) + RDamage(target) + QDamage(target))) ..
+			tostring(math.floor(EDamage(target) + RDamage(target) + QDamage(target))) ..
 			" (" ..
-			tostring(math.floor((WDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100)) ..
+			tostring(math.floor((EDamage(target) + RDamage(target) + QDamage(target)) / target.health * 100)) ..
 			"%)" .. "Kilable",
 			20,
 			pos.x + 55,
@@ -336,12 +314,7 @@ local function OnDraw()
  end
 end 
 
-
-
 local function OnTick()
-    if menu.misc.Gap.GapE:get() then
-		EGapcloser()
-	end
 	if menu.keys.harasskey:get() then
 		Harass()
 	end
