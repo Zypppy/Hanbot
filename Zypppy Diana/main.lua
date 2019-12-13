@@ -1,4 +1,4 @@
-local version = "3.0"
+local version = "3.5"
 
 local preds = module.internal("pred")
 local TS = module.internal("TS")
@@ -23,6 +23,7 @@ menu.c:boolean("qcombo", "Use Q in Combo", true)
 menu.c:boolean("ecombo", "Use E in Combo", true)
 menu.c:boolean("wcombo", "Use W in Combo", true)
 menu.c:boolean("rcombo", "Use R in Combo", true)
+menu.c:slider("rhit", "R Enemies Hit", 2, 1, 5, 1)
 
 menu:menu("h", "Harass")
 menu.h:boolean("qharass", "Use Q in Harass", true)
@@ -165,7 +166,7 @@ local function Combo()
    if menu.c.rcombo:get() then
    local target = GetTargetR()
       if common.IsValidTarget(target) and target then
-	     if (target.pos:dist(player) < spellR.range) then
+	     if #count_enemies_in_range(player.pos, spellR.range) >= menu.c.rhit:get() then
 		    player:castSpell("self", 3)
 		 end
 	  end
